@@ -18,30 +18,17 @@
 
 package org.apache.hadoop.hive.ql.exec.tez;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.apache.hadoop.hive.ql.io.AcidUtils;
-import org.apache.hadoop.hive.ql.io.BucketizedHiveInputFormat;
-import org.apache.hadoop.mapred.InputFormat;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.TableScanOperator;
 import org.apache.hadoop.hive.ql.exec.Utilities;
+import org.apache.hadoop.hive.ql.io.AcidUtils;
+import org.apache.hadoop.hive.ql.io.BucketizedHiveInputFormat;
 import org.apache.hadoop.hive.ql.io.HiveFileFormatUtils;
 import org.apache.hadoop.hive.ql.io.HiveInputFormat;
 import org.apache.hadoop.hive.ql.io.orc.OrcSplit;
@@ -55,10 +42,12 @@ import org.apache.hadoop.mapred.split.SplitLocationProvider;
 import org.apache.hadoop.mapred.split.TezGroupedSplit;
 import org.apache.hadoop.mapred.split.TezMapredSplitsGrouper;
 import org.apache.tez.dag.api.TaskLocationHint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Multimap;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.*;
 
 
 /**
@@ -71,8 +60,8 @@ public class SplitGrouper {
 
   // TODO This needs to be looked at. Map of Map to Map... Made concurrent for now since split generation
   // can happen in parallel.
-  private static final Map<Map<Path, PartitionDesc>, Map<Path, PartitionDesc>> cache =
-      new ConcurrentHashMap<>();
+  private final Map<Map<Path, PartitionDesc>, Map<Path, PartitionDesc>> cache =
+      new HashMap<>();
 
   private final TezMapredSplitsGrouper tezGrouper = new TezMapredSplitsGrouper();
 
@@ -212,11 +201,11 @@ public class SplitGrouper {
         }
       }
       /**
-       * The expectation is that each InputSplit is a {@link org.apache.hadoop.hive.ql.io.HiveInputFormat.HiveInputSplit} 
-       * wrapping an OrcSplit. So group these splits by bucketId and within each bucketId, sort by writeId, stmtId, 
-       * rowIdOffset or splitStart. For 'original' splits (w/o acid meta cols in the file) SyntheticBucketProperties 
-       * should always be there and so rowIdOffset is there. For 'native' acid files, OrcSplit doesn't have 
-       * the 1st rowid in the split, so splitStart is used to sort. This should achieve the required sorting invariance 
+       * The expectation is that each InputSplit is a {@link org.apache.hadoop.hive.ql.io.HiveInputFormat.HiveInputSplit}
+       * wrapping an OrcSplit. So group these splits by bucketId and within each bucketId, sort by writeId, stmtId,
+       * rowIdOffset or splitStart. For 'original' splits (w/o acid meta cols in the file) SyntheticBucketProperties
+       * should always be there and so rowIdOffset is there. For 'native' acid files, OrcSplit doesn't have
+       * the 1st rowid in the split, so splitStart is used to sort. This should achieve the required sorting invariance
        * (sort by: writeId, stmtId, rowIdOffset within each bucket) needed for Acid tables.
        * See: {@link org.apache.hadoop.hive.ql.io.AcidInputFormat}
        * Create a TezGroupedSplit for each bucketId and return.
@@ -241,14 +230,14 @@ public class SplitGrouper {
         this.group(jobConf, schemaGroupedSplitMultiMap, availableSlots, waves, locationProvider);
     return groupedSplits;
   }
-  
+
   // Returns the path of the first split in this list for logging purposes
   private String getFirstSplitPath(InputSplit[] splits) {
     if (splits.length == 0) {
       throw new RuntimeException("The list of splits provided for grouping is empty.");
     }
     Path splitPath = ((FileSplit) splits[0]).getPath();
-   
+
     return splitPath.toString();
   }
 
@@ -259,7 +248,7 @@ public class SplitGrouper {
    */
   Multimap<Integer, InputSplit> getCompactorSplitGroups(InputSplit[] rawSplits, Configuration conf,
       boolean isMinorCompaction) {
-    // Note: For our case, this multimap will essentially contain one value (one TezGroupedSplit) per key 
+    // Note: For our case, this multimap will essentially contain one value (one TezGroupedSplit) per key
     Multimap<Integer, InputSplit> bucketSplitMultiMap = ArrayListMultimap.<Integer, InputSplit> create();
     HiveInputFormat.HiveInputSplit[] splits = new HiveInputFormat.HiveInputSplit[rawSplits.length];
     int i = 0;
@@ -301,7 +290,7 @@ public class SplitGrouper {
     }
     return bucketSplitMultiMap;
   }
-  
+
   static class ComparatorCompactor implements Comparator<HiveInputFormat.HiveInputSplit>, Serializable {
 
     @Override

@@ -147,14 +147,41 @@ public class HiveIcebergInputFormat extends MapredIcebergInputFormat<Record>
 
     String location = job.get(InputFormatConfig.TABLE_LOCATION);
     return Arrays.stream(super.getSplits(job, numSplits))
-                 .map(split -> new HiveIcebergSplit((IcebergSplit) split, location))
-                 .toArray(InputSplit[]::new);
+            .map(split -> {
+              HiveIcebergSplit ics = new HiveIcebergSplit((IcebergSplit) split, location);
+              ics.setPushDownReadColumnIds(job.get(ColumnProjectionUtils.READ_COLUMN_IDS_CONF_STR,
+                      ""));
+              ics.setPushDownReadColumnNames(job.get(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR,
+                      ""));
+              ics.setPushDownFetchVirtualColumn(job.get(ColumnProjectionUtils.FETCH_VIRTUAL_COLUMNS_CONF_STR,
+                      Boolean.FALSE.toString()));
+              return ics;
+            })
+            .toArray(InputSplit[]::new);
   }
 
   @Override
   public RecordReader<Void, Container<Record>> getRecordReader(InputSplit split, JobConf job,
                                                                Reporter reporter) throws IOException {
-    job.set(InputFormatConfig.SELECTED_COLUMNS, job.get(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR, ""));
+    LOG.info("SY-ICEBERG-GET-RECORD-STACK-TRACE-DEBUG [{}]",
+            Arrays.deepToString(Thread.currentThread().getStackTrace()));
+    if (job.get(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR, "")
+            .isEmpty()) {
+      job.set(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR,
+              ((HiveIcebergSplit) split).getPushDownReadColumnNames());
+    }
+    if (job.get(ColumnProjectionUtils.READ_COLUMN_IDS_CONF_STR, "")
+            .isEmpty()) {
+      job.set(ColumnProjectionUtils.READ_COLUMN_IDS_CONF_STR,
+              ((HiveIcebergSplit) split).getPushDownReadColumnIds());
+    }
+    if (job.get(ColumnProjectionUtils.FETCH_VIRTUAL_COLUMNS_CONF_STR, "")
+            .isEmpty()) {
+      job.set(ColumnProjectionUtils.FETCH_VIRTUAL_COLUMNS_CONF_STR,
+              ((HiveIcebergSplit) split).getPushDownFetchVirtualColumn());
+    }
+    job.set(InputFormatConfig.SELECTED_COLUMNS,
+            job.get(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR, ""));
     job.setBoolean(InputFormatConfig.FETCH_VIRTUAL_COLUMNS,
             job.getBoolean(ColumnProjectionUtils.FETCH_VIRTUAL_COLUMNS_CONF_STR, false));
 

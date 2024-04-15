@@ -44,6 +44,11 @@ public class HiveIcebergSplit extends FileSplit implements IcebergSplitContainer
   // MapReduce job and merge compatible splits together.
   private String tableLocation;
 
+  private String pushDownReadColumnIds;
+  private String pushDownReadColumnNames;
+
+  private String pushDownFetchVirtualColumn;
+
   // public no-argument constructor for deserialization
   public HiveIcebergSplit() {
   }
@@ -99,6 +104,18 @@ public class HiveIcebergSplit extends FileSplit implements IcebergSplitContainer
     out.writeInt(bytes.length);
     out.write(bytes);
 
+    bytes = SerializationUtil.serializeToBytes(pushDownReadColumnIds);
+    out.writeInt(bytes.length);
+    out.write(bytes);
+
+    bytes = SerializationUtil.serializeToBytes(pushDownReadColumnNames);
+    out.writeInt(bytes.length);
+    out.write(bytes);
+
+    bytes = SerializationUtil.serializeToBytes(pushDownFetchVirtualColumn);
+    out.writeInt(bytes.length);
+    out.write(bytes);
+
     innerSplit.write(out);
   }
 
@@ -108,7 +125,61 @@ public class HiveIcebergSplit extends FileSplit implements IcebergSplitContainer
     in.readFully(bytes);
     tableLocation = SerializationUtil.deserializeFromBytes(bytes);
 
+    bytes = new byte[in.readInt()];
+    in.readFully(bytes);
+    pushDownReadColumnIds = SerializationUtil.deserializeFromBytes(bytes);
+
+    bytes = new byte[in.readInt()];
+    in.readFully(bytes);
+    pushDownReadColumnNames = SerializationUtil.deserializeFromBytes(bytes);
+
+    bytes = new byte[in.readInt()];
+    in.readFully(bytes);
+    pushDownFetchVirtualColumn = SerializationUtil.deserializeFromBytes(bytes);
+
+
     innerSplit = new IcebergSplit();
     innerSplit.readFields(in);
   }
+
+  public IcebergSplit getInnerSplit() {
+    return innerSplit;
+  }
+
+  public void setInnerSplit(IcebergSplit innerSplit) {
+    this.innerSplit = innerSplit;
+  }
+
+  public String getTableLocation() {
+    return tableLocation;
+  }
+
+  public void setTableLocation(String tableLocation) {
+    this.tableLocation = tableLocation;
+  }
+
+  public String getPushDownReadColumnIds() {
+    return pushDownReadColumnIds;
+  }
+
+  public void setPushDownReadColumnIds(String pushDownReadColumnIds) {
+    this.pushDownReadColumnIds = pushDownReadColumnIds;
+  }
+
+  public String getPushDownReadColumnNames() {
+    return pushDownReadColumnNames;
+  }
+
+  public void setPushDownReadColumnNames(String pushDownReadColumnNames) {
+    this.pushDownReadColumnNames = pushDownReadColumnNames;
+  }
+
+  public String getPushDownFetchVirtualColumn() {
+    return pushDownFetchVirtualColumn;
+  }
+
+  public void setPushDownFetchVirtualColumn(String pushDownFetchVirtualColumn) {
+    this.pushDownFetchVirtualColumn = pushDownFetchVirtualColumn;
+  }
+
 }
