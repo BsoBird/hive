@@ -100,7 +100,8 @@ Java
 | Hive 1.2      | Java 7        |
 | Hive 2.x      | Java 7        |
 | Hive 3.x      | Java 8        |
-| Hive 4.x      | Java 8        |
+| Hive 4.0.x      | Java 8        |
+| Hive 4.1.x      | Java 17        |
 
 
 Hadoop
