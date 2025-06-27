@@ -60,6 +60,6 @@ public class UDFUUIDv7 extends GenericUDF {
 
     @Override
     public String getDisplayString(String[] children) {
-        return "uuid_v7";
+        return "UUID_V7()";
     }
 }
